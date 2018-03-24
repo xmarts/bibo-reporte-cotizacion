@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="report_cotizacion_parcialidad">
+            <t t-call="report.html_container">
+                <t t-foreach="docs" t-as="o">
+                      <t t-call="stock.external_layout_barcode_right">
+                      </t>
+                </t>
+
+                <div class="page">
+                <t t-set="variablex" t-value="[]"/>
+                <t t-set="contador" t-value="1"/>
+                <t t-set="unidadesj" t-value="0"/>
+                <t t-set="subtotalj" t-value="0"/>
+                <t t-set="ivaj" t-value="0"/>
+                <t t-set="totalj" t-value="0"/>
+                   <t t-foreach="docs" t-as="o">
+                         <t t-if="contador==1">
+                           <br/>
+                           <div class="row">
+                                 <div class="col-xs-6">
+                                     <div t-if="o.move_lines and o.move_lines[0].partner_id and o.move_lines[0].partner_id.id != o.partner_id.id">
+                                         <span><strong>Dirección de entrega:</strong></span>
+                                         <div t-field="o.move_lines[0].partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;fax&quot;], &quot;no_marker&quot;: True, &quot;phone_icons&quot;: True}"/>
+                                     </div>
+                                     <div t-if="o.picking_type_id.code != 'internal' and (not o.move_lines or not o.move_lines[0].partner_id) and o.picking_type_id.warehouse_id.partner_id">
+                                         <span><strong>Dirección del almacén:</strong></span>
+                                         <div t-field="o.picking_type_id.warehouse_id.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;fax&quot;], &quot;no_marker&quot;: True, &quot;phone_icons&quot;: True}"/>
+                                     </div>
+                                 </div>
+                                 <div class="col-xs-5 col-xs-offset-1">
+                                     <div t-if="o.picking_type_id.code=='incoming' and o.partner_id">
+                                         <span><strong>Dirección del proveedor:</strong></span>
+                                     </div>
+                                     <div t-if="o.picking_type_id.code=='internal' and o.partner_id">
+                                         <span><strong>Dirección del almacén:</strong></span>
+                                     </div>
+                                     <div t-if="o.picking_type_id.code=='outgoing' and o.partner_id">
+                                         <span><strong>Dirección del Cliente:</strong></span>
+                                     </div>
+                                     <div t-if="o.partner_id" name="partner_header">
+                                         <div t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;name&quot;, &quot;phone&quot;], &quot;no_marker&quot;: True, &quot;phone_icons&quot;: True}"/>
+                                         <p t-if="o.sudo().partner_id.vat">VAT: <span t-field="o.sudo().partner_id.vat"/></p>
+                                     </div>
+                                 </div>
+                             </div>
+
+                         </t>   <!--    T-IF CONTADOR    -->
+                         <t t-set="contador" t-value="contador+1"/>
+
+                                <t t-set="pack_operation_ids" t-value="o.pack_operation_ids"/>
+                                <t groups="base.group_portal" t-set="pack_operation_ids" t-value="o.pack_operation_ids.sudo()"/>
+                                <t t-as="pack_operation" t-foreach="pack_operation_ids.sorted(key=lambda r: r.product_id.default_code)">
+                                    <t t-foreach="o.sale_id.order_line" t-as="lines">
+                                           <t t-if="pack_operation.product_id == lines.product_id">
+                                               <t t-set="variablex[]" t-value="variablex.append([                                                str(pack_operation.product_id.default_code),                                                str(pack_operation.product_id.name),                                                str(pack_operation.product_id.attribute_value_ids),                                                str(int(pack_operation.product_qty)),                                                str(pack_operation.product_uom_id.name),                                                str('{0:.2f}'.format(lines.price_unit)),                                                str('{0:.2f}'.format(lines.price_subtotal))                                                ])"/>
+                                           </t>
+                                    </t>
+
+
+                                </t>
+                            <!---     SE AGREGO ESTO    -->
+                            <!---     SE AGREGO ESTO    UNIDADES-->
+                            <t t-set="unidades" t-value="0"/>
+                                <t t-foreach="pack_operation_ids" t-as="pack_operation">
+                                    <t t-foreach="o.sale_id.order_line" t-as="lines">
+                                        <t t-if="pack_operation.product_id == lines.product_id">
+                                            <t t-set="unidades" t-value="pack_operation.product_qty+unidades"/>
+                                        </t>
+                                    </t>
+                                </t>
+                            <t t-set="unidadesj" t-value="unidades+unidadesj"/>
+
+                            <!---     SE AGREGO ESTO    SUBTOTAL-->
+                            <t t-set="subtotalgeneral" t-value="0"/>
+                                <t t-foreach="pack_operation_ids" t-as="pack_operation">
+                                    <t t-foreach="o.sale_id.order_line" t-as="lines">
+                                        <t t-if="pack_operation.product_id == lines.product_id">
+                                            <t t-set="subtotalgeneral" t-value="lines.price_subtotal+subtotalgeneral"/>
+                                        </t>
+                                    </t>
+                                </t>
+                            <t t-set="subtotalj" t-value="subtotalgeneral+subtotalj"/>
+
+
+                            <!---     SE AGREGO ESTO   IVA -->
+                            <t t-set="iva" t-value="0"/>
+                                <t t-foreach="pack_operation_ids" t-as="pack_operation">
+                                    <t t-foreach="o.sale_id.order_line" t-as="lines">
+                                        <t t-if="pack_operation.product_id == lines.product_id">
+                                            <t t-set="iva" t-value="lines.price_tax+iva"/>
+                                        </t>
+                                    </t>
+                                </t>
+                            <t t-set="ivaj" t-value="iva+ivaj"/>
+
+
+                            <!---     SE AGREGO ESTO  TOTAL  -->
+                            <t t-set="tot" t-value="iva+subtotalgeneral"/>
+                            <t t-set="totalj" t-value="tot+totalj"/>
+
+                             <p t-if="o.state in ['draft', 'waiting', 'confirmed']">
+                                No tiene ningún producto reservado para este picking. Haga clic en el botón
+                                'Reservar' para comprobar si los productos están disponibles.
+                            </p>
+                            <p t-field="o.note"/>
+                   </t> <!--    T FOREACH DOCS PRINCIPAL    -->
+
+                           <!---     SE AGREGO ESTO    -->
+                           <table class="table table-condensed">
+                               <thead>
+                                        <tr>
+                                            <th><strong>Producto</strong></th>
+                                            <th class="text-right"><strong>Cantidad</strong></th>
+                                            <th><strong>Precio unitario</strong></th>    <!---     SE AGREGO ESTO    -->
+                                            <th><strong>Subtotal</strong></th>           <!---     SE AGREGO ESTO    -->
+
+                                        </tr>
+                                </thead>
+                                <tbody>
+
+                                    <t t-set="contadorr" t-value="1"/>
+                                    <t t-foreach="variablex" t-as="pru">
+                                        <t t-if="contadorr==1">
+                                            <t t-foreach="docs" t-as="o">
+                                               <t t-set="pack_operation_ids" t-value="o.pack_operation_ids"/>
+                                               <t t-as="pack_operation" t-foreach="pack_operation_ids.sorted(key=lambda r: r.product_id.default_code)">
+                                                   <tr>
+                                                           <td><span t-field="pack_operation.product_id"/></td>
+                                                           <td class="text-right"><span t-field="pack_operation.product_qty"/> <span t-field="pack_operation.product_uom_id" groups="product.group_uom"/></td>
+                                                           <!---     SE AGREGO ESTO PRECIO UNITARIO    -->
+                                                           <td>
+                                                               <t t-foreach="o.sale_id.order_line" t-as="lines">
+                                                                  <t t-if="pack_operation.product_id == lines.product_id">
+                                                                     <span t-field="lines.price_unit"/>
+                                                                  </t>
+                                                               </t>
+                                                           </td>
+                                                           <!---     SE AGREGO ESTO SUBTOTALES    -->
+                                                           <td>
+                                                               <t t-foreach="o.sale_id.order_line" t-as="lines">
+                                                                  <t t-if="pack_operation.product_id == lines.product_id">
+                                                                     <span t-field="lines.price_subtotal"/>
+                                                                  </t>
+                                                               </t>
+                                                           </td>
+                                                   </tr>
+                                               </t>
+                                            </t>
+                                        </t>
+                                       <t t-set="contadorr" t-value="contadorr+1"/>
+                                    </t>
+                                </tbody>
+                            </table>
+
+
+                            <div class="row" name="total">
+                                <div class="col-xs-4 pull-right">
+                                    <table class="table table-condensed">
+                                    <tr class="border-black">
+                                            <td colspan="6">
+                                                <strong>Unidades: </strong>
+                                            </td>
+                                            <td class="text-right">
+                                               <span t-esc="int(unidadesj)"/>
+                                            </td>
+                                    </tr>
+
+                                    <tr class="border-black">
+                                            <td colspan="6">
+                                                <strong>Subtotal: </strong>
+                                            </td>
+                                            <td class="text-right">
+                                                <p>$ <span t-esc="'{0:.2f}'.format(subtotalj)"/></p>
+                                            </td>
+                                    </tr>
+
+                                    <tr class="border-black">
+                                            <td colspan="6">
+                                                <strong>Iva: </strong>
+                                            </td>
+                                            <td class="text-right">
+                                                 <p>$ <span t-esc="'{0:.2f}'.format(ivaj)"/></p>
+                                            </td>
+                                    </tr>
+
+                                    <tr class="border-black">
+                                            <td colspan="6">
+                                                <strong>Total</strong>
+                                            </td>
+                                            <td class="text-right">
+                                                 <p>$ <span t-esc="'{0:.2f}'.format(totalj)"/></p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                </div>    <!--    DIV PAGE    -->
+             </t>
+        </template>
+    </data>
+</odoo>
